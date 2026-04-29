@@ -171,6 +171,19 @@
     .poll-ctrl{display:flex;gap:8px;margin-top:.5rem;flex-wrap:wrap;align-items:center}
     .offline-banner{background:#FEF9E7;border-bottom:1px solid #F9E79F;padding:6px 1rem;font-family:sans-serif;font-size:11px;color:#9A7D0A;display:none}
     .offline-banner.show{display:block}
+    .public-entry-section{border-top:1px solid var(--border);padding:.75rem .875rem;background:var(--bg)}
+    .public-entry-toggle{width:100%;padding:9px 14px;font-family:sans-serif;font-size:13px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+    .public-entry-toggle:hover{opacity:.9}
+    .public-entry-form{margin-top:.75rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);padding:.875rem}
+    .pub-fg2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.75rem}
+    .pub-fg2 .form-group{margin-bottom:0}
+    .entry-list-title{font-size:11px;font-family:sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;margin-top:.75rem}
+    .entry-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px 10px;font-family:sans-serif;font-size:12px;margin:2px}
+    .entry-chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .submit-entry-btn{width:100%;padding:10px;background:var(--green);color:#fff;border:none;border-radius:6px;font-family:sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-top:.5rem}
+    .submit-entry-btn:hover{opacity:.9}
+    .submit-entry-btn:disabled{opacity:.6;cursor:default}
+    .entries-count-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-family:sans-serif;background:var(--accent);color:#fff;padding:2px 8px;border-radius:999px;margin-left:6px}
   </style>
 </head>
 <body>
@@ -255,7 +268,7 @@
       docEntries:[{name:'',url:'',type:'pdf'}], msg:null,
       sheetsUrl:'', roster:[], rosterStatus:'idle',
       entryForm:{name:'',age:'',weight:'',grade:'Ungraded'},
-      acResults:[], editingEntryEvent:null,
+      acResults:[], editingEntryEvent:null, openEntryForm:null, publicEntryForm:{},
       resForm:{evId:'',name:'',medal:'gold'},
       videoAdminEvId:null,
     };
@@ -453,11 +466,98 @@
           sb.appendChild(stripe);sb.appendChild(body);card.appendChild(sb);
           const vids=S.videos[ev.id]||[];const poll=S.polls[ev.id];
           if(vids.length>0&&poll) renderPollSection(card,ev,vids,poll);
+          renderPublicEntrySection(card,ev);
           grp.appendChild(card);
         });
         list.appendChild(grp);
       });
       app.appendChild(list);
+    }
+
+
+    function renderPublicEntrySection(card, ev){
+      const entries = S.entries[ev.id]||[];
+      const isOpen = S.openEntryForm === ev.id;
+      const sec = el('div','public-entry-section');
+
+      // Toggle button
+      const tog = el('button','public-entry-toggle');
+      const togLeft = el('span');
+      togLeft.innerHTML = '👥 Enter a competitor';
+      const togRight = el('span');
+      const badge = el('span','entries-count-badge');
+      badge.textContent = entries.length + (entries.length===1?' entry':' entries');
+      togRight.appendChild(badge);
+      togRight.appendChild(document.createTextNode(' '+(isOpen?'▲':'▼')));
+      tog.appendChild(togLeft); tog.appendChild(togRight);
+      tog.onclick = ()=>{ S.openEntryForm = isOpen?null:ev.id; S.publicEntryForm={}; render(); };
+      sec.appendChild(tog);
+
+      if(isOpen){
+        const form = el('div','public-entry-form');
+        form.innerHTML = '<h3>Add a competitor to '+ev.title+'</h3>';
+
+        // Name
+        const ng = el('div','form-group');
+        const nl = el('label'); nl.textContent='Competitor name'; nl.htmlFor='pub-name-'+ev.id; ng.appendChild(nl);
+        const ni = document.createElement('input'); ni.type='text'; ni.id='pub-name-'+ev.id;
+        ni.placeholder='Full name'; ni.value=S.publicEntryForm.name||''; ni.autocomplete='off';
+        ni.oninput=e=>{ S.publicEntryForm.name=e.target.value; };
+        ng.appendChild(ni); form.appendChild(ng);
+
+        // Age + Weight
+        const grid = el('div','pub-fg2');
+        const ag=el('div','form-group'); const al=el('label'); al.textContent='Age'; ag.appendChild(al);
+        const ai=document.createElement('input'); ai.type='number'; ai.id='pub-age-'+ev.id; ai.placeholder='e.g. 12';
+        ai.value=S.publicEntryForm.age||''; ai.min=4; ai.max=99;
+        ai.oninput=e=>S.publicEntryForm.age=e.target.value; ag.appendChild(ai);
+        const wg=el('div','form-group'); const wl=el('label'); wl.textContent='Weight (kg)'; wg.appendChild(wl);
+        const wi=document.createElement('input'); wi.type='number'; wi.id='pub-wt-'+ev.id; wi.placeholder='e.g. 45';
+        wi.value=S.publicEntryForm.weight||''; wi.min=10;
+        wi.oninput=e=>S.publicEntryForm.weight=e.target.value; wg.appendChild(wi);
+        grid.appendChild(ag); grid.appendChild(wg); form.appendChild(grid);
+
+        // Grade
+        const gg=el('div','form-group'); const gl=el('label'); gl.textContent='Grade'; gg.appendChild(gl);
+        const gs=el('select'); gs.id='pub-grade-'+ev.id;
+        GRADES.forEach(g=>{ const o=document.createElement('option'); o.value=g.l; o.textContent=g.l;
+          if(g.l===(S.publicEntryForm.grade||'Ungraded'))o.selected=true; gs.appendChild(o); });
+        gs.onchange=e=>S.publicEntryForm.grade=e.target.value; gg.appendChild(gs); form.appendChild(gg);
+
+        // Submit
+        const btn = el('button','submit-entry-btn');
+        btn.textContent = '✓ Submit entry';
+        btn.onclick = async()=>{
+          const name=(document.getElementById('pub-name-'+ev.id)?.value||'').trim();
+          const age=document.getElementById('pub-age-'+ev.id)?.value||'';
+          const weight=document.getElementById('pub-wt-'+ev.id)?.value||'';
+          const grade=document.getElementById('pub-grade-'+ev.id)?.value||'Ungraded';
+          if(!name){ alert('Please enter a name.'); return; }
+          btn.disabled=true; btn.textContent='Submitting…';
+          if(!S.entries[ev.id])S.entries[ev.id]=[];
+          S.entries[ev.id].push({id:'c'+Date.now(),name,age,weight,grade,submittedBy:'public',submittedAt:new Date().toISOString()});
+          await save('entries',S.entries);
+          S.openEntryForm=null; S.publicEntryForm={};
+          render();
+        };
+        form.appendChild(btn);
+
+        // Show existing entries (names only — no edit controls for public)
+        if(entries.length){
+          const etitle=el('div','entry-list-title'); etitle.textContent='Already entered ('+entries.length+')'; form.appendChild(etitle);
+          const chips=el('div'); chips.style.cssText='display:flex;flex-wrap:wrap;gap:2px';
+          entries.forEach(c=>{
+            const chip=el('span','entry-chip');
+            const dot=el('span','entry-chip-dot');
+            const g=GRADES.find(x=>x.l===c.grade); dot.style.background=g?g.c:'#eee'; dot.style.border='1px solid '+(g?g.b:'#ccc');
+            chip.appendChild(dot); chip.appendChild(document.createTextNode(c.name));
+            chips.appendChild(chip);
+          });
+          form.appendChild(chips);
+        }
+        sec.appendChild(form);
+      }
+      card.appendChild(sec);
     }
 
     function renderPollSection(card,ev,vids,poll){
