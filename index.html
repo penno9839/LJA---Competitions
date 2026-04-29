@@ -220,13 +220,32 @@
     async function fbLoad(key) {
       try {
         const snap = await getDoc(doc(db, 'appdata', key));
-        return snap.exists() ? snap.data().value : null;
-      } catch(e) { return null; }
+        if(snap.exists()){
+          // Update localStorage backup
+          try { localStorage.setItem('judo_'+key, JSON.stringify(snap.data().value)); } catch(e){}
+          return snap.data().value;
+        }
+        // Fall back to localStorage if Firebase has no data
+        const local = localStorage.getItem('judo_'+key);
+        return local ? JSON.parse(local) : null;
+      } catch(e) {
+        console.warn('Firebase load failed for', key, '- trying localStorage');
+        const local = localStorage.getItem('judo_'+key);
+        return local ? JSON.parse(local) : null;
+      }
     }
     async function fbSave(key, value) {
+      // Always save to localStorage as instant backup
+      try { localStorage.setItem('judo_'+key, JSON.stringify(value)); } catch(e){}
+      // Then save to Firebase
       try {
         await setDoc(doc(db, 'appdata', key), { value, updatedAt: Date.now() });
-      } catch(e) { console.error('Save failed:', e); }
+      } catch(e) {
+        console.error('Firebase save failed for key:', key, e);
+        // Show warning to user if admin is logged in
+        const banner = document.getElementById('offline-banner');
+        if(banner){ banner.textContent = '⚠ Could not save to database — check Firebase rules (see setup guide)'; banner.classList.add('show'); }
+      }
     }
     async function fbUploadVideo(evId, file, onProgress) {
       const path = `videos/${evId}/${Date.now()}_${file.name}`;
