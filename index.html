@@ -265,11 +265,43 @@
 
     const LOGO = '/icons/icon-192.png';
     const GRADES = [
-      {l:'Ungraded',c:'#E8E8E8',b:'#ccc'},
-      {l:'Yellow',c:'#F9E400',b:'#c8b800'},{l:'Orange',c:'#FF8C00',b:'#c06a00'},
-      {l:'Green',c:'#2ECC71',b:'#1a9e52'},{l:'Blue',c:'#2980B9',b:'#1a5c8a'},
-      {l:'Brown',c:'#7B4A2D',b:'#5a3520'},{l:'Black 1st',c:'#1C1C1A',b:'#000'},
-      {l:'Black 2nd',c:'#1C1C1A',b:'#000'},{l:'Black 3rd',c:'#1C1C1A',b:'#000'},
+      // Mon grades (red belt with white stripes)
+      {l:'1 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'2 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'3 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'4 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'5 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'6 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'7 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'8 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'9 Mon', c:'#E8000D',b:'#b00008'},
+      {l:'10 Mon',c:'#E8000D',b:'#b00008'},
+      {l:'11 Mon',c:'#E8000D',b:'#b00008'},
+      {l:'12 Mon',c:'#E8000D',b:'#b00008'},
+      {l:'13 Mon',c:'#E8000D',b:'#b00008'},
+      {l:'14 Mon',c:'#E8000D',b:'#b00008'},
+      {l:'15 Mon',c:'#E8000D',b:'#b00008'},
+      {l:'16 Mon',c:'#E8000D',b:'#b00008'},
+      {l:'17 Mon',c:'#E8000D',b:'#b00008'},
+      {l:'18 Mon',c:'#E8000D',b:'#b00008'},
+      // Kyu grades
+      {l:'6th Kyu',c:'#F9E400',b:'#c8b800'},
+      {l:'5th Kyu',c:'#FF8C00',b:'#c06a00'},
+      {l:'4th Kyu',c:'#FF8C00',b:'#c06a00'},
+      {l:'3rd Kyu',c:'#2ECC71',b:'#1a9e52'},
+      {l:'2nd Kyu',c:'#2980B9',b:'#1a5c8a'},
+      {l:'1st Kyu',c:'#7B4A2D',b:'#5a3520'},
+      // Dan grades
+      {l:'1st Dan',c:'#1C1C1A',b:'#000'},
+      {l:'2nd Dan',c:'#1C1C1A',b:'#000'},
+      {l:'3rd Dan',c:'#1C1C1A',b:'#000'},
+      {l:'4th Dan',c:'#1C1C1A',b:'#000'},
+      {l:'5th Dan',c:'#1C1C1A',b:'#000'},
+      {l:'6th Dan',c:'#E8000D',b:'#b00008'},
+      {l:'7th Dan',c:'#E8000D',b:'#b00008'},
+      {l:'8th Dan',c:'#F9E400',b:'#c8b800'},
+      {l:'9th Dan',c:'#F9E400',b:'#c8b800'},
+      {l:'10th Dan',c:'#F9E400',b:'#c8b800'},
     ];
     const ASSOC = {
       BJC:{label:'BJC',color:'#C0392B',light:'#FDECEA',dark:'#922B21'},
@@ -286,7 +318,7 @@
       videos:{}, polls:{}, pollWinners:{},
       docEntries:[{name:'',url:'',type:'pdf'}], msg:null,
       sheetsUrl:'', roster:[], rosterStatus:'idle',
-      entryForm:{name:'',age:'',weight:'',grade:'Ungraded'},
+      entryForm:{name:'',age:'',weight:'',grade:'1 Mon'},
       acResults:[], pubAcResults:[], editingEntryEvent:null, openEntryForm:null, publicEntryForm:{},
       resForm:{evId:'',name:'',medal:'gold'},
       videoAdminEvId:null,
@@ -509,7 +541,7 @@
       togRight.appendChild(badge);
       togRight.appendChild(document.createTextNode(' '+(isOpen?'▲':'▼')));
       tog.appendChild(togLeft); tog.appendChild(togRight);
-      tog.onclick = ()=>{ S.openEntryForm = isOpen?null:ev.id; S.publicEntryForm={}; S.pubAcResults=[]; render(); };
+      tog.onclick = ()=>{ S.openEntryForm = isOpen?null:ev.id; S.publicEntryForm={grade:'1 Mon'}; S.pubAcResults=[]; render(); };
       sec.appendChild(tog);
 
       if(isOpen){
@@ -582,7 +614,7 @@
         const gg=el('div','form-group'); const gl=el('label'); gl.textContent='Grade'; gg.appendChild(gl);
         const gs=el('select'); gs.id='pub-grade-'+ev.id;
         GRADES.forEach(g=>{ const o=document.createElement('option'); o.value=g.l; o.textContent=g.l;
-          if(g.l===(S.publicEntryForm.grade||'Ungraded'))o.selected=true; gs.appendChild(o); });
+          if(g.l===(S.publicEntryForm.grade||'1 Mon'))o.selected=true; gs.appendChild(o); });
         gs.onchange=e=>S.publicEntryForm.grade=e.target.value; gg.appendChild(gs); form.appendChild(gg);
 
         // Roster hint
@@ -605,7 +637,7 @@
           if(!S.entries[ev.id])S.entries[ev.id]=[];
           S.entries[ev.id].push({id:'c'+Date.now(),name,age,weight,grade,submittedBy:'public',submittedAt:new Date().toISOString()});
           await save('entries',S.entries);
-          S.openEntryForm=null; S.publicEntryForm={}; S.pubAcResults=[];
+          S.openEntryForm=null; S.publicEntryForm={grade:'1 Mon'}; S.pubAcResults=[];
           render();
         };
         form.appendChild(btn);
@@ -804,7 +836,7 @@
           grid.appendChild(ag);grid.appendChild(wg);form.appendChild(grid);
           const gg=el('div','form-group');const gl=el('label');gl.textContent='Grade';gg.appendChild(gl);const gs=el('select');gs.id='en-grade-'+ev.id;GRADES.forEach(g=>{const o=document.createElement('option');o.value=g.l;o.textContent=g.l;if(g.l===S.entryForm.grade)o.selected=true;gs.appendChild(o);});gs.onchange=e=>S.entryForm.grade=e.target.value;gg.appendChild(gs);form.appendChild(gg);
           const ab=el('button','btn btn-primary btn-sm');ab.textContent='Add to competition';ab.style.width='100%';
-          ab.onclick=async()=>{const name=(document.getElementById('en-name-'+ev.id)?.value||'').trim();const age=document.getElementById('en-age-'+ev.id)?.value;const weight=document.getElementById('en-wt-'+ev.id)?.value;const grade=document.getElementById('en-grade-'+ev.id)?.value;if(!name){showMsg('Name required.',false);return;}if(!S.entries[ev.id])S.entries[ev.id]=[];S.entries[ev.id].push({id:'c'+Date.now(),name,age,weight,grade});await save('entries',S.entries);S.entryForm={name:'',age:'',weight:'',grade:'Ungraded'};S.acResults=[];showMsg(name+' added.',true);render();};
+          ab.onclick=async()=>{const name=(document.getElementById('en-name-'+ev.id)?.value||'').trim();const age=document.getElementById('en-age-'+ev.id)?.value;const weight=document.getElementById('en-wt-'+ev.id)?.value;const grade=document.getElementById('en-grade-'+ev.id)?.value;if(!name){showMsg('Name required.',false);return;}if(!S.entries[ev.id])S.entries[ev.id]=[];S.entries[ev.id].push({id:'c'+Date.now(),name,age,weight,grade});await save('entries',S.entries);S.entryForm={name:'',age:'',weight:'',grade:'1 Mon'};S.acResults=[];showMsg(name+' added.',true);render();};
           form.appendChild(ab);sec.appendChild(form);
           if(entries.length){
             const tbl=el('table','entries-table');tbl.style.marginTop='.5rem';const th=tbl.createTHead();const hr=th.insertRow();['Name','Age','Wt','Grade',''].forEach(h=>{const t=document.createElement('th');t.textContent=h;hr.appendChild(t);});const tb=tbl.createTBody();
