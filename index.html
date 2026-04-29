@@ -505,27 +505,20 @@
         const ni = document.createElement('input'); ni.type='text'; ni.id='pub-name-'+ev.id;
         ni.placeholder = rosterAvailable ? 'Start typing a name…' : 'Full name';
         ni.value=S.publicEntryForm.name||''; ni.autocomplete='off';
-        ni.oninput=e=>{
-          S.publicEntryForm.name=e.target.value;
-          if(rosterAvailable){
-            const q=e.target.value.toLowerCase().trim();
-            S.pubAcResults = q ? S.roster.filter(r=>(r.name||r.Name||'').toLowerCase().startsWith(q)).slice(0,6) : [];
-            renderPubAc();
-          }
-        };
+        // Autocomplete dropdown — created before input so we can reference it directly
+        const acDiv = el('div','ac-list'); acDiv.style.cssText='display:none;position:absolute;top:100%;left:0;right:0;z-index:99;background:#fff;border:1px solid var(--border);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:200px;overflow-y:auto';
         ng.appendChild(ni);
-
-        // Autocomplete dropdown
-        const acDiv = el('div','ac-list'); acDiv.id='pub-ac-'+ev.id; acDiv.style.display='none';
         ng.appendChild(acDiv);
         form.appendChild(ng);
 
-        function renderPubAc(){
-          const d = document.getElementById('pub-ac-'+ev.id); if(!d) return;
-          d.innerHTML='';
-          if(!(S.pubAcResults||[]).length){ d.style.display='none'; return; }
-          d.style.display='block';
-          (S.pubAcResults||[]).forEach(r=>{
+        function updatePubAc(){
+          acDiv.innerHTML='';
+          const q=(ni.value||'').toLowerCase().trim();
+          if(!q||!rosterAvailable){ acDiv.style.display='none'; return; }
+          const matches=S.roster.filter(r=>(r.name||r.Name||'').toLowerCase().startsWith(q)).slice(0,6);
+          if(!matches.length){ acDiv.style.display='none'; return; }
+          acDiv.style.display='block';
+          matches.forEach(r=>{
             const name=r.name||r.Name||'';
             const age=r.age||r.Age||'';
             const weight=r.weight||r.Weight||'';
@@ -534,15 +527,25 @@
             const strong=el('strong'); strong.textContent=name; item.appendChild(strong);
             const meta=el('span'); meta.style.cssText='color:var(--muted);font-size:11px;margin-left:6px';
             meta.textContent=grade+(age?' · '+age+'yr':'')+(weight?' · '+weight+'kg':''); item.appendChild(meta);
-            item.onclick=()=>{
-              // Autofill all fields
+            item.onmousedown=e=>{
+              e.preventDefault(); // stop blur firing before click
+              // Fill inputs directly without re-render
+              ni.value=name;
+              document.getElementById('pub-age-'+ev.id).value=age;
+              document.getElementById('pub-wt-'+ev.id).value=weight;
+              // Set grade select
+              const gradeEl=document.getElementById('pub-grade-'+ev.id);
+              if(gradeEl) [...gradeEl.options].forEach(o=>{ o.selected=(o.value===grade); });
               S.publicEntryForm={name,age,weight,grade};
-              S.pubAcResults=[];
-              render();
+              acDiv.style.display='none';
             };
-            d.appendChild(item);
+            acDiv.appendChild(item);
           });
         }
+
+        ni.oninput=()=>{ S.publicEntryForm.name=ni.value; updatePubAc(); };
+        ni.onfocus=()=>updatePubAc();
+        ni.onblur=()=>setTimeout(()=>{ acDiv.style.display='none'; }, 150);
 
         // Age + Weight (readonly hint if autofilled)
         const grid = el('div','pub-fg2');
