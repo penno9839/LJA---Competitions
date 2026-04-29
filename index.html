@@ -268,7 +268,7 @@
       docEntries:[{name:'',url:'',type:'pdf'}], msg:null,
       sheetsUrl:'', roster:[], rosterStatus:'idle',
       entryForm:{name:'',age:'',weight:'',grade:'Ungraded'},
-      acResults:[], editingEntryEvent:null, openEntryForm:null, publicEntryForm:{},
+      acResults:[], pubAcResults:[], editingEntryEvent:null, openEntryForm:null, publicEntryForm:{},
       resForm:{evId:'',name:'',medal:'gold'},
       videoAdminEvId:null,
     };
@@ -490,22 +490,61 @@
       togRight.appendChild(badge);
       togRight.appendChild(document.createTextNode(' '+(isOpen?'▲':'▼')));
       tog.appendChild(togLeft); tog.appendChild(togRight);
-      tog.onclick = ()=>{ S.openEntryForm = isOpen?null:ev.id; S.publicEntryForm={}; render(); };
+      tog.onclick = ()=>{ S.openEntryForm = isOpen?null:ev.id; S.publicEntryForm={}; S.pubAcResults=[]; render(); };
       sec.appendChild(tog);
 
       if(isOpen){
         const form = el('div','public-entry-form');
         form.innerHTML = '<h3>Add a competitor to '+ev.title+'</h3>';
 
-        // Name
-        const ng = el('div','form-group');
+        const rosterAvailable = S.roster && S.roster.length > 0;
+
+        // Name with autocomplete if roster loaded
+        const ng = el('div','form-group autocomplete-wrap');
         const nl = el('label'); nl.textContent='Competitor name'; nl.htmlFor='pub-name-'+ev.id; ng.appendChild(nl);
         const ni = document.createElement('input'); ni.type='text'; ni.id='pub-name-'+ev.id;
-        ni.placeholder='Full name'; ni.value=S.publicEntryForm.name||''; ni.autocomplete='off';
-        ni.oninput=e=>{ S.publicEntryForm.name=e.target.value; };
-        ng.appendChild(ni); form.appendChild(ng);
+        ni.placeholder = rosterAvailable ? 'Start typing a name…' : 'Full name';
+        ni.value=S.publicEntryForm.name||''; ni.autocomplete='off';
+        ni.oninput=e=>{
+          S.publicEntryForm.name=e.target.value;
+          if(rosterAvailable){
+            const q=e.target.value.toLowerCase().trim();
+            S.pubAcResults = q ? S.roster.filter(r=>(r.name||r.Name||'').toLowerCase().startsWith(q)).slice(0,6) : [];
+            renderPubAc();
+          }
+        };
+        ng.appendChild(ni);
 
-        // Age + Weight
+        // Autocomplete dropdown
+        const acDiv = el('div','ac-list'); acDiv.id='pub-ac-'+ev.id; acDiv.style.display='none';
+        ng.appendChild(acDiv);
+        form.appendChild(ng);
+
+        function renderPubAc(){
+          const d = document.getElementById('pub-ac-'+ev.id); if(!d) return;
+          d.innerHTML='';
+          if(!(S.pubAcResults||[]).length){ d.style.display='none'; return; }
+          d.style.display='block';
+          (S.pubAcResults||[]).forEach(r=>{
+            const name=r.name||r.Name||'';
+            const age=r.age||r.Age||'';
+            const weight=r.weight||r.Weight||'';
+            const grade=r.grade||r.Grade||'Ungraded';
+            const item=el('div','ac-item');
+            const strong=el('strong'); strong.textContent=name; item.appendChild(strong);
+            const meta=el('span'); meta.style.cssText='color:var(--muted);font-size:11px;margin-left:6px';
+            meta.textContent=grade+(age?' · '+age+'yr':'')+(weight?' · '+weight+'kg':''); item.appendChild(meta);
+            item.onclick=()=>{
+              // Autofill all fields
+              S.publicEntryForm={name,age,weight,grade};
+              S.pubAcResults=[];
+              render();
+            };
+            d.appendChild(item);
+          });
+        }
+
+        // Age + Weight (readonly hint if autofilled)
         const grid = el('div','pub-fg2');
         const ag=el('div','form-group'); const al=el('label'); al.textContent='Age'; ag.appendChild(al);
         const ai=document.createElement('input'); ai.type='number'; ai.id='pub-age-'+ev.id; ai.placeholder='e.g. 12';
@@ -524,6 +563,13 @@
           if(g.l===(S.publicEntryForm.grade||'Ungraded'))o.selected=true; gs.appendChild(o); });
         gs.onchange=e=>S.publicEntryForm.grade=e.target.value; gg.appendChild(gs); form.appendChild(gg);
 
+        // Roster hint
+        if(rosterAvailable){
+          const hint=el('p'); hint.style.cssText='font-family:sans-serif;font-size:11px;color:var(--muted);margin-bottom:.5rem';
+          hint.textContent='💡 Start typing a name to autofill from the club roster';
+          form.insertBefore(hint, grid);
+        }
+
         // Submit
         const btn = el('button','submit-entry-btn');
         btn.textContent = '✓ Submit entry';
@@ -537,7 +583,7 @@
           if(!S.entries[ev.id])S.entries[ev.id]=[];
           S.entries[ev.id].push({id:'c'+Date.now(),name,age,weight,grade,submittedBy:'public',submittedAt:new Date().toISOString()});
           await save('entries',S.entries);
-          S.openEntryForm=null; S.publicEntryForm={};
+          S.openEntryForm=null; S.publicEntryForm={}; S.pubAcResults=[];
           render();
         };
         form.appendChild(btn);
